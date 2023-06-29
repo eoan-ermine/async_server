@@ -3,6 +3,8 @@
 #include <thread>
 #include <vector>
 
+#include <boost/asio/signal_set.hpp>
+
 template <typename Fn>
 void RunWorkers(unsigned n, const Fn& fn) {
     n = std::max(1u, n);
@@ -16,6 +18,7 @@ void RunWorkers(unsigned n, const Fn& fn) {
 }
 
 namespace net = boost::asio;
+namespace sys = boost::system;
 namespace beast = boost::beast;
 namespace http = beast::http;
 
@@ -74,6 +77,13 @@ int main() {
 	unsigned num_threads = 8;
     net::io_context ioc{static_cast<int>(num_threads)};
 
+    net::signal_set signals(ioc, SIGINT, SIGTERM);
+    signals.async_wait([&ioc](const sys::error_code& ec, int signal_number) {
+        if (!ec) {
+            ioc.stop();
+        }
+    });
+
     const auto address = net::ip::make_address("0.0.0.0");
     constexpr net::ip::port_type port = 8080;
     http_server::ServeHttp(ioc, {address, port}, [](auto&& req, auto&& sender) {
@@ -84,4 +94,5 @@ int main() {
     RunWorkers(num_threads, [&ioc] {
         ioc.run();
     });
+    std::cout << "Shutting down..." << std::endl;
 }
