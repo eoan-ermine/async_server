@@ -11,5 +11,5 @@ endif()
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-add_executable(hello_async src/main.cpp src/server.hpp)
+add_executable(hello_async src/main.cpp src/http_server.cpp src/http_server.hpp src/sdk.hpp)
 target_link_libraries(hello_async PRIVATE Threads::Threads)
