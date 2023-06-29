@@ -27,24 +27,47 @@ using StringResponse = http::response<http::string_body>;
 
 // Создаёт StringResponse с заданными параметрами
 StringResponse MakeStringResponse(http::status status, std::string_view body, unsigned http_version,
-								  bool keep_alive, std::string_view content_type = "text/html"sv) {
-	StringResponse response(status, http_version);
-	response.set(http::field::content_type, content_type);
-	response.body() = body;
-	response.content_length(body.size());
-	response.keep_alive(keep_alive);
-	return response;
+                                  bool keep_alive,
+                                  std::string_view content_type = "text/html"sv) {
+    StringResponse response(status, http_version);
+    response.set(http::field::content_type, content_type);
+    response.body() = body;
+    response.content_length(body.size());
+    response.keep_alive(keep_alive);
+    return response;
+}
+
+StringResponse MakeEmptyResponse(http::status status, std::string_view content_length, unsigned http_version,
+                                 bool keep_alive,
+                                 std::string_view content_type = "text/html"sv) {
+    StringResponse response(status, http_version);
+    response.set(http::field::content_type, content_type);
+    response.set(http::field::content_length, content_length);
+    response.keep_alive(keep_alive);
+    return response;
 }
 
 StringResponse HandleRequest(StringRequest&& request) {
-	const auto text_response = [&request](http::status status, std::string_view text) {
-		return MakeStringResponse(status, text, request.version(), request.keep_alive());
-	};
-	return text_response(
-	    http::status::ok,
-	    "Hello, "s.append(request.target().substr(1))
-	);
+    auto text_response = [&request](http::status status, std::string_view text) {
+        return MakeStringResponse(status, text, request.version(), request.keep_alive());
+    };
+    auto empty_response = [&request](http::status status) {
+        return MakeStringResponse(status, request["Content-Length"], request.version(), request.keep_alive());
+    };
 
+    switch(request.method()) {
+    case http::verb::get:
+        return text_response(
+            http::status::ok,
+            "Hello, "s.append(request.target().substr(1))
+        );
+    case http::verb::head:
+        return empty_response(http::status::ok);
+    default:
+        StringResponse response = text_response(http::status::method_not_allowed, "Invalid method"sv);
+        response.set("Allow"sv, "GET, HEAD"sv);
+        return response;
+    }
 }
 
 int main() {
