@@ -80,6 +80,7 @@ int main() {
         sender(HandleRequest(std::forward<decltype(req)>(req)));
     });
 
+    std::cout << "Server has started..." << std::endl;
     RunWorkers(num_threads, [&ioc] {
         ioc.run();
     });
